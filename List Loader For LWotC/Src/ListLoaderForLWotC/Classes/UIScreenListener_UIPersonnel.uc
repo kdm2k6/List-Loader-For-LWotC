@@ -2,7 +2,7 @@ class UIScreenListener_UIPersonnel extends UIScreenListener config(Settings);
 
 var bool RealizationIsComplete;
 var int RealizationIncrementer;
-// KDM : Whenever list item selection changes, assuming there are list items left to realize, we prioritize 
+// KDM : Whenever list item selection changes, assuming there are list items left to realize, we set
 // the order with which to realize list items, store it in ListItemsToRealize, then begin the realization process. 
 var array<int> ListItemsToRealize;
 // KDM : It is important to note that list item selection and, consequently, ListItemsToRealize can change while 
@@ -37,7 +37,8 @@ event OnInit(UIScreen Screen)
 
 	if (!IsAPersonnelScreen(Screen)) { return; }
 
-	// KDM : Clamp the config variables else strange results, like non-loading lists, can occur.
+	// KDM : Clamp config variable's lower limits so that strange results, like non-loading lists, 
+	// do not occur.
 	ClampConfigVariables();
 
 	PersonnelScreen = UIPersonnel(Screen);
@@ -50,8 +51,7 @@ event OnInit(UIScreen Screen)
 	// the list has been cleared and will be updated.
 	PersonnelScreen.m_kList.OnChildAdded = OnPersonnelChildAdded;
 
-	// KDM : List selection occurred before we could hook up m_kList.OnSetSelectedIndex; therefore,
-	// do it again here.
+	// KDM : List selection occurs before we can hook up m_kList.OnSetSelectedIndex; therefore, do it here.
 	RealizationIsComplete = false;
 	ListItemsRealized.Length = 0;
 	SelectedIndex = PersonnelScreen.m_kList.SelectedIndex;
@@ -65,7 +65,7 @@ event OnLoseFocus(UIScreen Screen)
 	// KDM : Kill any OnInitDelegates which are active.
 	if (PanelWithOnInitDelegate != none)
 	{
-		PanelWithOnInitDelegate.ClearOnInitDelegate(RealizeNextItem);
+		PanelWithOnInitDelegate.ClearOnInitDelegate(RealizeListItems);
 	}
 
 	// KDM : Make sure we stop realizing list items.
@@ -79,7 +79,7 @@ event OnRemoved(UIScreen Screen)
 	// KDM : Kill any OnInitDelegates which are active.
 	if (PanelWithOnInitDelegate != none)
 	{
-		PanelWithOnInitDelegate.ClearOnInitDelegate(RealizeNextItem);
+		PanelWithOnInitDelegate.ClearOnInitDelegate(RealizeListItems);
 	}
 
 	if (PersonnelScreen != none && PersonnelScreen.m_kList != none)
@@ -90,6 +90,7 @@ event OnRemoved(UIScreen Screen)
 	
 	RealizationIsComplete = true;
 	ListItemsToRealize.Length = 0;
+	ListItemsRealized.Length = 0;
 	PanelWithOnInitDelegate = none;
 	PersonnelScreen = none;
 }
@@ -133,7 +134,7 @@ simulated function OnPersonnelSetSelectedIndex(UIList List, int Index)
 	// KDM : We don't want multiple OnInitDelegates active at the same time so kill any older ones.
 	if (PanelWithOnInitDelegate != none)
 	{
-		PanelWithOnInitDelegate.ClearOnInitDelegate(RealizeNextItem);
+		PanelWithOnInitDelegate.ClearOnInitDelegate(RealizeListItems);
 		PanelWithOnInitDelegate = none;
 	}
 	
@@ -141,7 +142,7 @@ simulated function OnPersonnelSetSelectedIndex(UIList List, int Index)
 	if (!RealizationIsComplete)
 	{
 		SetupListItemPriorities(List, Index);
-		RealizeNextItem(none);
+		RealizeListItems(none);
 	}
 }
 
@@ -192,7 +193,8 @@ simulated function SetupListItemPriorities(UIList List, int SelectedIndex)
 		ListItemsToRealize.AddItem(i);
 	}
 
-	// KDM : 'PRIORITY 3' are the rest of the list items.
+	// KDM : 'PRIORITY 3' are the rest of the list items, prioritized according to their proximity to
+	// the visible list items.
 	while (ListItemsToRealize.Length < ListSize)
 	{
 		if (Descending)
@@ -218,11 +220,12 @@ simulated function SetupListItemPriorities(UIList List, int SelectedIndex)
 	}
 }
 
-simulated function RealizeNextItem(UIPanel Control)
+simulated function RealizeListItems(UIPanel Control)
 {
 	local int i, RealizedCounter, ListItemsRealizedBefore;
 	local UIPersonnel_SoldierListItem_LW_BLR ListItem;
 
+	// KDM : RealizedCounter stores the number of list items realized during this 'cycle'.
 	RealizedCounter = 0;
 	ListItemsRealizedBefore = ListItemsRealized.Length;
 
@@ -247,11 +250,11 @@ simulated function RealizeNextItem(UIPanel Control)
 			}
 
 			RealizedCounter++;
-			// KDM : If we have realized an appropriate number of list items, for this refresh cycle,
+			// KDM : If we have realized an appropriate number of list items, for this 'cycle',
 			// add a single InitDelegate so realization continues next cycle. 
 			if (RealizedCounter == NumberOfListItemsToRealizePerRefresh)
 			{
-				ListItem.PsiMarkup.AddOnInitDelegate(RealizeNextItem);
+				ListItem.PsiMarkup.AddOnInitDelegate(RealizeListItems);
 				PanelWithOnInitDelegate = ListItem.PsiMarkup;
 				break;
 			}
@@ -267,16 +270,20 @@ simulated function RealizeNextItem(UIPanel Control)
 		}
 	}
 
-
+	// KDM : If we just passed the NumberOfListItemsToRealizeBeforeVisible threshold, or if
+	// we have completed realizing a list which has less than NumberOfListItemsToRealizeBeforeVisible items
+	// then show all of the realized list items up to this point.
 	if ((ListItemsRealizedBefore < NumberOfListItemsToRealizeBeforeVisible && 
 		ListItemsRealized.Length >= NumberOfListItemsToRealizeBeforeVisible) ||
-		(RealizationIsComplete && ListItemsRealized.Length < NumberOfListItemsToRealizeBeforeVisible ))
+		(RealizationIsComplete && ListItemsRealized.Length < NumberOfListItemsToRealizeBeforeVisible))
 	{
 		for (i = 0; i < ListItemsRealized.Length; i++)
 		{
 			PersonnelScreen.m_kList.GetItem(ListItemsRealized[i]).Show();
 		}
 	}
+	// KDM : If we are past the NumberOfListItemsToRealizeBeforeVisible threshold then
+	// show the list items which were realized during this 'cycle'.
 	else if (ListItemsRealized.Length > NumberOfListItemsToRealizeBeforeVisible)
 	{
 		for (i = ListItemsRealizedBefore; i < ListItemsRealized.Length; i++)
