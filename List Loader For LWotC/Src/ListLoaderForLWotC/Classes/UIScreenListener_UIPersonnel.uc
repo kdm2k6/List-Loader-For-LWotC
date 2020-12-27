@@ -37,6 +37,7 @@ event OnInit(UIScreen Screen)
 
 	if (!IsAPersonnelScreen(Screen)) { return; }
 
+	// KDM : Clamp the config variables else strange results, like non-loading lists, can occur.
 	ClampConfigVariables();
 
 	PersonnelScreen = UIPersonnel(Screen);
@@ -46,11 +47,11 @@ event OnInit(UIScreen Screen)
 	// on the Squad Management screen for mouse and keyboard users.
 	PersonnelScreen.m_kList.OnSetSelectedIndex = OnPersonnelSetSelectedIndex;
 	// KDM : We want to know when the list's item container has been added, since this can be a sign that
-	// the list has been cleared and updated.
+	// the list has been cleared and will be updated.
 	PersonnelScreen.m_kList.OnChildAdded = OnPersonnelChildAdded;
 
-	// KDM : Force a list selection update since selection already occurred before we could hooked up 
-	// m_kList.OnSetSelectedIndex.
+	// KDM : List selection occurred before we could hook up m_kList.OnSetSelectedIndex; therefore,
+	// do it again here.
 	RealizationIsComplete = false;
 	ListItemsRealized.Length = 0;
 	SelectedIndex = PersonnelScreen.m_kList.SelectedIndex;
@@ -219,14 +220,12 @@ simulated function SetupListItemPriorities(UIList List, int SelectedIndex)
 
 simulated function RealizeNextItem(UIPanel Control)
 {
-	// KDM TEMP NumberOfListItemsToRealizePerRefresh
 	local int i, RealizedCounter, ListItemsRealizedBefore;
 	local UIPersonnel_SoldierListItem_LW_BLR ListItem;
 
 	RealizedCounter = 0;
 	ListItemsRealizedBefore = ListItemsRealized.Length;
 
-	// KDM : Only enter if there are items left to realize.
 	while (RealizationIncrementer < ListItemsToRealize.Length)
 	{
 		ListItem = UIPersonnel_SoldierListItem_LW_BLR(
@@ -239,6 +238,8 @@ simulated function RealizeNextItem(UIPanel Control)
 			ListItemsRealized.AddItem(ListItemsToRealize[RealizationIncrementer]);
 			
 			RealizationIncrementer++;
+			// KDM : If all of the list items have been realized we want to set RealizationIsComplete and
+			// then exit so no additional InitDelegates are set.
 			if (RealizationIncrementer >= ListItemsToRealize.Length)
 			{
 				RealizationIsComplete = true;
@@ -246,13 +247,14 @@ simulated function RealizeNextItem(UIPanel Control)
 			}
 
 			RealizedCounter++;
+			// KDM : If we have realized an appropriate number of list items, for this refresh cycle,
+			// add a single InitDelegate so realization continues next cycle. 
 			if (RealizedCounter == NumberOfListItemsToRealizePerRefresh)
 			{
 				ListItem.PsiMarkup.AddOnInitDelegate(RealizeNextItem);
 				PanelWithOnInitDelegate = ListItem.PsiMarkup;
 				break;
 			}
-			//break;
 		}
 		else
 		{
@@ -264,6 +266,7 @@ simulated function RealizeNextItem(UIPanel Control)
 			}
 		}
 	}
+
 
 	if ((ListItemsRealizedBefore < NumberOfListItemsToRealizeBeforeVisible && 
 		ListItemsRealized.Length >= NumberOfListItemsToRealizeBeforeVisible) ||
@@ -280,21 +283,7 @@ simulated function RealizeNextItem(UIPanel Control)
 		{
 			PersonnelScreen.m_kList.GetItem(ListItemsRealized[i]).Show();
 		}
-		// PersonnelScreen.m_kList.GetItem(ListItemsRealized[ListItemsRealized.Length - 1]).Show();
 	}
-	/*
-	if ((ListItemsRealized.Length == NumberOfListItemsToRealizeBeforeVisible) ||
-		(RealizationIsComplete && ListItemsRealized.Length < NumberOfListItemsToRealizeBeforeVisible))
-	{
-		for (i = 0; i < ListItemsRealized.Length; i++)
-		{
-			PersonnelScreen.m_kList.GetItem(ListItemsRealized[i]).Show();
-		}
-	}
-	else if (ListItemsRealized.Length > NumberOfListItemsToRealizeBeforeVisible)
-	{
-		PersonnelScreen.m_kList.GetItem(ListItemsRealized[ListItemsRealized.Length - 1]).Show();
-	}*/
 }
 
 defaultProperties
