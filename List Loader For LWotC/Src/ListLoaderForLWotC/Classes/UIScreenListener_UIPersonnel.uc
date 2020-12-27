@@ -2,7 +2,13 @@ class UIScreenListener_UIPersonnel extends UIScreenListener config(Settings);
 
 var bool RealizationIsComplete;
 var int RealizationIncrementer;
-var array<int> ListItemsToRealize, ListItemsRealized;
+// KDM : Whenever list item selection changes, assuming there are list items left to realize, we prioritize 
+// the order with which to realize list items, store it in ListItemsToRealize, then begin the realization process. 
+var array<int> ListItemsToRealize;
+// KDM : It is important to note that list item selection and, consequently, ListItemsToRealize can change while 
+// we are 'in the process' of realizing list items. ListItemsRealized is used to keep track of which
+// list items have been realized, independent of selection changes/interruptions.
+var array<int> ListItemsRealized;
 var UIPanel PanelWithOnInitDelegate;
 var UIPersonnel PersonnelScreen;
 
@@ -16,40 +22,22 @@ event OnInit(UIScreen Screen)
 	if (!IsAPersonnelScreen(Screen)) { return; }
 
 	PersonnelScreen = UIPersonnel(Screen);
-	// KDM : We want to know when the UIPersonnel screen's list selection changes, since this can be a sign
-	// that the list has updated via UpdateList.
-	//PersonnelScreen.m_kList.OnSelectionChanged = OnPersonnelSelectionChanged;
+	// KDM : We want to know when the UIPersonnel screen's list selection has been set, since this can be a sign
+	// that the list has updated via UpdateList. I originally made use of OnSelectionChanged, which only
+	// calls its callback function when the selected index actually 'changes'; however, this was never invoked
+	// on the Squad Management screen for mouse and keyboard users.
 	PersonnelScreen.m_kList.OnSetSelectedIndex = OnPersonnelSetSelectedIndex;
 	// KDM : We want to know when the list's item container has been added, since this can be a sign that
 	// the list has been cleared and updated.
 	PersonnelScreen.m_kList.OnChildAdded = OnPersonnelChildAdded;
 
-	// KDM : Force a selection update since selection was likely already done with
-	// before we hooked up m_kList.OnSelectionChanged.
+	// KDM : Force a list selection update since selection already occurred before we could hooked up 
+	// m_kList.OnSetSelectedIndex.
 	RealizationIsComplete = false;
-	//`log("RESETTING ARRAY ***************** ONINIT");
 	ListItemsRealized.Length = 0;
 	SelectedIndex = PersonnelScreen.m_kList.SelectedIndex;
-	//PersonnelScreen.m_kList.SetSelectedIndex(SelectedIndex, true);
 	PersonnelScreen.m_kList.SetSelectedIndex(SelectedIndex);
 }
-
-/*
-event OnReceiveFocus(UIScreen Screen)
-{
-	local int SelectedIndex;
-
-	if (!IsAPersonnelScreen(Screen)) { return; }
-
-	// KDM : Force a selection update since selection was likely already done with
-	// before we hooked up m_kList.OnSelectionChanged.
-	//RealizationIsComplete = false;
-	`log("RESETTING ARRAY ***************** RECEIVEFOCUS");
-	//ListItemsRealized.Length = 0;
-	//SelectedIndex = PersonnelScreen.m_kList.SelectedIndex;
-	//PersonnelScreen.m_kList.SetSelectedIndex(SelectedIndex, true);
-}
-*/
 
 event OnLoseFocus(UIScreen Screen)
 {
@@ -61,7 +49,7 @@ event OnLoseFocus(UIScreen Screen)
 		PanelWithOnInitDelegate.ClearOnInitDelegate(RealizeNextItem);
 	}
 
-	// KDM : Make sure we stop processing list item realization.
+	// KDM : Make sure we stop realizing list items.
 	RealizationIsComplete = true;
 }
 
@@ -78,7 +66,6 @@ event OnRemoved(UIScreen Screen)
 	if (PersonnelScreen != none && PersonnelScreen.m_kList != none)
 	{
 		PersonnelScreen.m_kList.OnSetSelectedIndex = none;
-		//PersonnelScreen.m_kList.OnSelectionChanged = none;
 		PersonnelScreen.m_kList.OnChildAdded = none;
 	}
 	
@@ -106,12 +93,10 @@ simulated function OnPersonnelChildAdded(UIPanel ChildPanel)
 	if (ChildPanel == PersonnelScreen.m_kList.ItemContainer)
 	{
 		RealizationIsComplete = false;
-		//`log("RESETTING ARRAY ***************** CHILD ADDED");
 		ListItemsRealized.Length = 0;
 	}
 }
 
-//simulated function OnPersonnelSelectionChanged(UIList List, int Index)
 simulated function OnPersonnelSetSelectedIndex(UIList List, int Index)
 {
 	// KDM : If the list has no items then don't worry about realizing any list items.
@@ -120,7 +105,7 @@ simulated function OnPersonnelSetSelectedIndex(UIList List, int Index)
 		return;
 	}
 
-	// KDM : If there is no list selection then realize as if we are looking at the top/first item.
+	// KDM : If there is no list selection then realize as if we are looking at the first list item.
 	if (Index < 0)
 	{
 		Index = 0;
@@ -136,28 +121,10 @@ simulated function OnPersonnelSetSelectedIndex(UIList List, int Index)
 	// KDM : Only attempt to realize items if there are items left to be realized. 
 	if (!RealizationIsComplete)
 	{
-		`log("KDM STARTED THE PROCESS ******************");
-
-		//ShowRealizedListItems();
 		SetupListItemPriorities(List, Index);
 		RealizeNextItem(none);
 	}
 }
-
-/*
-simulated function ShowRealizedListItems()
-{
-	local int i;
-
-	if (ListItemsRealized.Length > 0)
-	{
-		for (i = 0; i < ListItemsRealized.Length; i++)
-		{
-			PersonnelScreen.m_kList.GetItem(ListItemsRealized[i]).Show();
-		}	
-	}
-}
-*/
 
 simulated function SetupListItemPriorities(UIList List, int SelectedIndex)
 {
@@ -176,37 +143,26 @@ simulated function SetupListItemPriorities(UIList List, int SelectedIndex)
 	{
 		// KDM : 'PRIORITY 1' is the selected list item.
 		ListItemsToRealize.AddItem(SelectedIndex);
-		//`log("ADDING A : " @ SelectedIndex);
 	}		
 
 	// KDM : 'PRIORITY 2' are the visible list items.
 	ScrollPct = float(SelectedIndex) / float(ListSize - 1);
 	
-	//`log("KDM ************");
-	//`log("SelectedIndex " @ SelectedIndex);
-	//`log("ListSize " @ ListSize);
-	//`log("ScrollPct " @ ScrollPct);
-
 	// KDM : Here is an explanation of what is being done through an example.
 	// If we select list item 30, out of 100, with 10 list items visible at one time, we can see
 	// about 3 list items above and 7 list items below.
 	LowerLimit = SelectedIndex - FCeil(ScrollPct * float(NumberOfVisibleListItems));
-	//`log("LowerLimit " @ LowerLimit);
 	if (LowerLimit < 0)
 	{
 		LowerLimit = 0;
 	}
 
-	//`log("LowerLimit " @ LowerLimit);
-	
 	UpperLimit = SelectedIndex + FCeil((1.0 - ScrollPct) * float(NumberOfVisibleListItems));
-	//`log("UpperLimit " @ UpperLimit);
 	if (UpperLimit >= ListSize)
 	{
 		UpperLimit = ListSize - 1;
 	}
-	//`log("UpperLimit " @ UpperLimit);
-
+	
 	for (i = LowerLimit; i <= UpperLimit; i++)
 	{
 		// KDM : Don't add the selected list item if it has already been added.
@@ -215,11 +171,7 @@ simulated function SetupListItemPriorities(UIList List, int SelectedIndex)
 			continue;
 		}
 		ListItemsToRealize.AddItem(i);
-		//`log("ADDING B : " @ i);
 	}
-
-	//`log("ListItemsToRealize.Length " @ ListItemsToRealize.Length);
-	//`log("ListSize " @ ListSize);
 
 	// KDM : 'PRIORITY 3' are the rest of the list items.
 	while (ListItemsToRealize.Length < ListSize)
@@ -232,7 +184,6 @@ simulated function SetupListItemPriorities(UIList List, int SelectedIndex)
 				UpperLimit = 0;
 			}
 			ListItemsToRealize.AddItem(UpperLimit);
-			//`log("ADDING C : " @ UpperLimit);
 			Descending = false;	
 		}
 		else
@@ -243,11 +194,9 @@ simulated function SetupListItemPriorities(UIList List, int SelectedIndex)
 				LowerLimit = ListSize - 1;
 			}
 			ListItemsToRealize.AddItem(LowerLimit);
-			//`log("ADDING C : " @ LowerLimit);
 			Descending = true;	
 		}
 	}
-	//`log("ListItemsToRealize.Length " @ ListItemsToRealize.Length);
 }
 
 simulated function RealizeNextItem(UIPanel Control)
@@ -265,7 +214,6 @@ simulated function RealizeNextItem(UIPanel Control)
 		if (ListItem != none && ListItem.PsiMarkup == none)
 		{
 			ListItem.RealizeListItem();
-			//`log("RealizationIncrementer is " @ RealizationIncrementer @ ListItemsToRealize[RealizationIncrementer] @ "****" @ ListItemsRealized.Length);
 			ListItemsRealized.AddItem(ListItemsToRealize[RealizationIncrementer]);
 			ListItem.PsiMarkup.AddOnInitDelegate(RealizeNextItem);
 			PanelWithOnInitDelegate = ListItem.PsiMarkup;
@@ -287,35 +235,18 @@ simulated function RealizeNextItem(UIPanel Control)
 		}
 	}
 
-
 	if ((ListItemsRealized.Length == NumberOfListItemsToRealizeBeforeVisible) ||
 		(RealizationIsComplete && ListItemsRealized.Length < NumberOfListItemsToRealizeBeforeVisible))
 	{
 		for (i = 0; i < ListItemsRealized.Length; i++)
 		{
-			//`log("SECTION A : " @ ListItemsRealized[i]);
 			PersonnelScreen.m_kList.GetItem(ListItemsRealized[i]).Show();
 		}
 	}
 	else if (ListItemsRealized.Length > NumberOfListItemsToRealizeBeforeVisible)
 	{
-		//`log("SECTION B : " @ (ListItemsRealized.Length - 1));
 		PersonnelScreen.m_kList.GetItem(ListItemsRealized[ListItemsRealized.Length - 1]).Show();
 	}
-	/*
-	KDM TEMP **********
-	ListItemsRealized = RealizationIncrementer;
-	if (ListItemsRealized == NumberOfListItemsToRealizeBeforeVisible)
-	{
-		for (i = 0; i < ListItemsRealized; i++)
-		{
-			PersonnelScreen.m_kList.GetItem(ListItemsToRealize[i]).Show();
-		}
-	}
-	else if (ListItemsRealized > NumberOfListItemsToRealizeBeforeVisible)
-	{
-		PersonnelScreen.m_kList.GetItem(ListItemsToRealize[ListItemsRealized - 1]).Show();
-	}*/
 }
 
 defaultProperties
