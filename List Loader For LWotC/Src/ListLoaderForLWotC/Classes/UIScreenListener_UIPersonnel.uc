@@ -15,11 +15,29 @@ var UIPersonnel PersonnelScreen;
 var config bool RealizeSelectedListItemFirst;
 var config int NumberOfListItemsToRealizeBeforeVisible, NumberOfVisibleListItems, NumberOfListItemsToRealizePerRefresh;
 
+simulated function ClampConfigVariables()
+{
+	if (NumberOfListItemsToRealizeBeforeVisible < 1)
+	{
+		NumberOfListItemsToRealizeBeforeVisible = 1;
+	}
+	if (NumberOfVisibleListItems < 1)
+	{
+		NumberOfVisibleListItems = 1;
+	}
+	if (NumberOfListItemsToRealizePerRefresh < 1)
+	{
+		NumberOfListItemsToRealizePerRefresh = 1;
+	}
+}
+
 event OnInit(UIScreen Screen)
 {
 	local int SelectedIndex;
 
 	if (!IsAPersonnelScreen(Screen)) { return; }
+
+	ClampConfigVariables();
 
 	PersonnelScreen = UIPersonnel(Screen);
 	// KDM : We want to know when the UIPersonnel screen's list selection has been set, since this can be a sign
