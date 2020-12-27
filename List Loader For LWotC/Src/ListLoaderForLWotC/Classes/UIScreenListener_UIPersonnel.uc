@@ -13,7 +13,7 @@ var UIPanel PanelWithOnInitDelegate;
 var UIPersonnel PersonnelScreen;
 
 var config bool RealizeSelectedListItemFirst;
-var config int NumberOfListItemsToRealizeBeforeVisible, NumberOfVisibleListItems;
+var config int NumberOfListItemsToRealizeBeforeVisible, NumberOfVisibleListItems, NumberOfListItemsToRealizePerRefresh;
 
 event OnInit(UIScreen Screen)
 {
@@ -201,8 +201,12 @@ simulated function SetupListItemPriorities(UIList List, int SelectedIndex)
 
 simulated function RealizeNextItem(UIPanel Control)
 {
-	local int i;
+	// KDM TEMP NumberOfListItemsToRealizePerRefresh
+	local int i, RealizedCounter, ListItemsRealizedBefore;
 	local UIPersonnel_SoldierListItem_LW_BLR ListItem;
+
+	RealizedCounter = 0;
+	ListItemsRealizedBefore = ListItemsRealized.Length;
 
 	// KDM : Only enter if there are items left to realize.
 	while (RealizationIncrementer < ListItemsToRealize.Length)
@@ -215,15 +219,22 @@ simulated function RealizeNextItem(UIPanel Control)
 		{
 			ListItem.RealizeListItem();
 			ListItemsRealized.AddItem(ListItemsToRealize[RealizationIncrementer]);
-			ListItem.PsiMarkup.AddOnInitDelegate(RealizeNextItem);
-			PanelWithOnInitDelegate = ListItem.PsiMarkup;
 			
 			RealizationIncrementer++;
 			if (RealizationIncrementer >= ListItemsToRealize.Length)
 			{
 				RealizationIsComplete = true;
+				break;
 			}
-			break;
+
+			RealizedCounter++;
+			if (RealizedCounter == NumberOfListItemsToRealizePerRefresh)
+			{
+				ListItem.PsiMarkup.AddOnInitDelegate(RealizeNextItem);
+				PanelWithOnInitDelegate = ListItem.PsiMarkup;
+				break;
+			}
+			//break;
 		}
 		else
 		{
@@ -231,10 +242,29 @@ simulated function RealizeNextItem(UIPanel Control)
 			if (RealizationIncrementer >= ListItemsToRealize.Length)
 			{
 				RealizationIsComplete = true;
+				break;
 			}
 		}
 	}
 
+	if ((ListItemsRealizedBefore < NumberOfListItemsToRealizeBeforeVisible && 
+		ListItemsRealized.Length >= NumberOfListItemsToRealizeBeforeVisible) ||
+		(RealizationIsComplete && ListItemsRealized.Length < NumberOfListItemsToRealizeBeforeVisible ))
+	{
+		for (i = 0; i < ListItemsRealized.Length; i++)
+		{
+			PersonnelScreen.m_kList.GetItem(ListItemsRealized[i]).Show();
+		}
+	}
+	else if (ListItemsRealized.Length > NumberOfListItemsToRealizeBeforeVisible)
+	{
+		for (i = ListItemsRealizedBefore; i < ListItemsRealized.Length; i++)
+		{
+			PersonnelScreen.m_kList.GetItem(ListItemsRealized[i]).Show();
+		}
+		// PersonnelScreen.m_kList.GetItem(ListItemsRealized[ListItemsRealized.Length - 1]).Show();
+	}
+	/*
 	if ((ListItemsRealized.Length == NumberOfListItemsToRealizeBeforeVisible) ||
 		(RealizationIsComplete && ListItemsRealized.Length < NumberOfListItemsToRealizeBeforeVisible))
 	{
@@ -246,7 +276,7 @@ simulated function RealizeNextItem(UIPanel Control)
 	else if (ListItemsRealized.Length > NumberOfListItemsToRealizeBeforeVisible)
 	{
 		PersonnelScreen.m_kList.GetItem(ListItemsRealized[ListItemsRealized.Length - 1]).Show();
-	}
+	}*/
 }
 
 defaultProperties
