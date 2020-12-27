@@ -1,0 +1,37 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="12.0" DefaultTargets="Default" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Guid>65987e04-f21b-4623-9ab6-f706f259ba22</Guid>
+    <Name>List Loader For LWotC</Name>
+    <Description>Description of My XCOM 2 Mod.</Description>
+    <SteamPublishID>0</SteamPublishID>
+    <AssemblyName>List Loader For LWotC</AssemblyName>
+    <RootNamespace>List Loader For LWotC</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Folder Include="Config\" />
+    <Folder Include="Localization\" />
+    <Folder Include="Src\" />
+    <Folder Include="Src\ListLoaderForLWotC\" />
+    <Folder Include="Src\ListLoaderForLWotC\Classes\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Config\XComSettings.ini">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="ReadMe.txt" />
+    <Content Include="ModPreview.jpg" />
+    <Content Include="Config\XComEditor.ini" />
+    <Content Include="Config\XComEngine.ini" />
+    <Content Include="Config\XComGame.ini" />
+    <Content Include="Localization\XComGame.int" />
+    <Content Include="Src\ListLoaderForLWotC\Classes\UIPersonnel_SoldierListItem_LW_BLR.uc">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="Src\ListLoaderForLWotC\Classes\UIScreenListener_UIPersonnel.uc">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="Src\ListLoaderForLWotC\Classes\X2DownloadableContentInfo_ListLoaderForLWotC.uc" />
+  </ItemGroup>
+  <Import Project="$(MSBuildLocalExtensionPath)\XCOM2.targets" />
+</Project>
