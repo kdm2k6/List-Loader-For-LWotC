@@ -3,10 +3,11 @@ class UIScreenListener_UIPersonnel extends UIScreenListener config(Settings);
 var bool RealizationIsComplete;
 var int RealizationIncrementer;
 // KDM : Whenever list item selection changes, assuming there are list items left to realize, we set
-// the order with which to realize list items, store it in ListItemsToRealize, then begin the realization process. 
+// the order with which to realize list items, store it in ListItemsToRealize, then begin the realization
+// process. 
 var array<int> ListItemsToRealize;
-// KDM : It is important to note that list item selection and, consequently, ListItemsToRealize can change while 
-// we are 'in the process' of realizing list items. ListItemsRealized is used to keep track of which
+// KDM : It is important to note that list item selection and, consequently, ListItemsToRealize can change 
+// while we are 'in the process' of realizing list items. ListItemsRealized is used to keep track of which
 // list items have been realized, independent of selection changes/interruptions.
 var array<int> ListItemsRealized;
 var UIPanel PanelWithOnInitDelegate;
@@ -42,8 +43,8 @@ event OnInit(UIScreen Screen)
 	ClampConfigVariables();
 
 	PersonnelScreen = UIPersonnel(Screen);
-	// KDM : We want to know when the UIPersonnel screen's list selection has been set, since this can be a sign
-	// that the list has updated via UpdateList. I originally made use of OnSelectionChanged, which only
+	// KDM : We want to know when the UIPersonnel screen's list selection has been set, since this can be a 
+	// sign that the list has updated via UpdateList. I originally made use of OnSelectionChanged, which only
 	// calls its callback function when the selected index actually 'changes'; however, this was never invoked
 	// on the Squad Management screen for mouse and keyboard users.
 	PersonnelScreen.m_kList.OnSetSelectedIndex = OnPersonnelSetSelectedIndex;

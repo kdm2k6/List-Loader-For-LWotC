@@ -42,8 +42,8 @@ simulated function InitListItem(StateObjectReference initUnitRef)
 
 	// KDM : We have to spawn and initialize the BondIcon here or else it never updates properly.
 	// After a lot of thought and frustration, I think I now understand why :
-	// - UIPersonnel_SoldierListItem has a libID of 'SoldierListItem'; consequently, it connects to 'SoldierListItem' 
-	// in gfxSoldierList.upk. Now, within SoldierListItem.onLoad we find the statement 
+	// - UIPersonnel_SoldierListItem has a libID of 'SoldierListItem'; consequently, it connects to 
+	// 'SoldierListItem' in gfxSoldierList.upk. Now, within SoldierListItem.onLoad we find the statement 
 	// this.BondIcon = this.UnitBondIcon; it just so happens that UnitBondIcon is the movie clip name
 	// for BondIcon within UIPersonnel_SoldierListItem. 
 	// - So, upon loading/initialization, Flash connects its BondIcon variable to Unreal's BondIcon variable, 
@@ -99,6 +99,7 @@ simulated function RealizeListItem()
 	}
 }
 
+// KDM : Most UpdateData code comes from UIPersonnel_SoldierListItem_LW.UpdateData.
 simulated function UpdateData()
 {
 	local int BondLevel, iTimeNum; 
@@ -202,7 +203,7 @@ simulated function UpdateData()
 		BondLevel);
 
 	// KDM : Flash's SoldierListItem.UpdateData, called via AS_UpdateDataSoldier, is nice enough to set
-	// BondIcon._visible to true regardless of the BondLevel. This means a soldier who has no bonds
+	// BondIcon._visible to true 'regardless' of the BondLevel. This means a soldier who has no bonds
 	// will still have their bond icon shown despite it being hidden just prior. The other 'BIG' problem
 	// is that Unreal thinks the BondIcon is hidden because Flash changed visibility values 'behind its back'.
 	// Therefore we can't do a simple Hide; we need to modify bIsVisible before calling Hide for it to
