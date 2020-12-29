@@ -66,7 +66,7 @@ simulated function InitBondIcon()
 		{
 			BondIcon.bIsNavigable = false;
 		}
-		BondIcon.InitBondIcon('UnitBondIcon');
+		BondIcon.InitBondIcon('UnitBondIcon', , , UnitRef);
 	}
 }
 
