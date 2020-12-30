@@ -16,21 +16,8 @@ var UIPersonnel PersonnelScreen;
 var config bool RealizeSelectedListItemFirst;
 var config int NumberOfListItemsToRealizeBeforeVisible, NumberOfVisibleListItems, NumberOfListItemsToRealizePerRefresh;
 
-simulated function ClampConfigVariables()
-{
-	if (NumberOfListItemsToRealizeBeforeVisible < 1)
-	{
-		NumberOfListItemsToRealizeBeforeVisible = 1;
-	}
-	if (NumberOfVisibleListItems < 1)
-	{
-		NumberOfVisibleListItems = 1;
-	}
-	if (NumberOfListItemsToRealizePerRefresh < 1)
-	{
-		NumberOfListItemsToRealizePerRefresh = 1;
-	}
-}
+var delegate<OnItemSelectedCallback> OnSetSelectedIndex;
+delegate OnItemSelectedCallback(UIList List, int Index);
 
 event OnInit(UIScreen Screen)
 {
@@ -43,6 +30,10 @@ event OnInit(UIScreen Screen)
 	ClampConfigVariables();
 
 	PersonnelScreen = UIPersonnel(Screen);
+	if (PersonnelScreen.m_kList.OnSetSelectedIndex != none)
+	{
+		OnSetSelectedIndex = PersonnelScreen.m_kList.OnSetSelectedIndex;
+	}
 	// KDM : We want to know when the UIPersonnel screen's list selection has been set, since this can be a 
 	// sign that the list has updated via UpdateList. I originally made use of OnSelectionChanged, which only
 	// calls its callback function when the selected index actually 'changes'; however, this was never invoked
@@ -94,6 +85,24 @@ event OnRemoved(UIScreen Screen)
 	ListItemsRealized.Length = 0;
 	PanelWithOnInitDelegate = none;
 	PersonnelScreen = none;
+
+	OnSetSelectedIndex = none;
+}
+
+simulated function ClampConfigVariables()
+{
+	if (NumberOfListItemsToRealizeBeforeVisible < 1)
+	{
+		NumberOfListItemsToRealizeBeforeVisible = 1;
+	}
+	if (NumberOfVisibleListItems < 1)
+	{
+		NumberOfVisibleListItems = 1;
+	}
+	if (NumberOfListItemsToRealizePerRefresh < 1)
+	{
+		NumberOfListItemsToRealizePerRefresh = 1;
+	}
 }
 
 simulated function bool IsAPersonnelScreen(UIScreen Screen)
@@ -120,6 +129,11 @@ simulated function OnPersonnelChildAdded(UIPanel ChildPanel)
 
 simulated function OnPersonnelSetSelectedIndex(UIList List, int Index)
 {
+	if (OnSetSelectedIndex != none)
+	{
+		OnSetSelectedIndex(List, Index);
+	}
+
 	// KDM : If the list has no items then don't worry about realizing any list items.
 	if (List.ItemCount <= 0)
 	{
